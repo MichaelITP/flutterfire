@@ -6,6 +6,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_core_platform_interface/firebase_core_platform_interface.dart'
     show FirebasePluginPlatform;
 import 'package:firebase_in_app_messaging_platform_interface/firebase_in_app_messaging_platform_interface.dart';
+import 'package:flutter/services.dart';
 
 class FirebaseInAppMessaging extends FirebasePluginPlatform {
   FirebaseInAppMessaging._({required this.app})
@@ -62,5 +63,12 @@ class FirebaseInAppMessaging extends FirebasePluginPlatform {
   /// Determine whether automatic data collection is enabled or not.
   Future<void> setAutomaticDataCollectionEnabled(bool enabled) {
     return _delegate.setAutomaticDataCollectionEnabled(enabled);
+  }
+
+  /// A broadcast stream of in-app message display events from the native layer.
+  ///
+  /// Each event is a Map describing the in-app message and its data.
+  Stream<Map<String, dynamic>> get onMessageDisplay {
+    return _delegate.onMessageDisplay;
   }
 }

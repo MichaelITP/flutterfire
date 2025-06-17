@@ -67,4 +67,11 @@ abstract class FirebaseInAppMessagingPlatform extends PlatformInterface {
       'setAutomaticDataCollectionEnabled() is not implemented',
     );
   }
+
+  /// A broadcast stream of in-app message display events from the native layer.
+  ///
+  /// Each event is a Map describing the in-app message and its data.
+  Stream<Map<String, dynamic>> get onMessageDisplay {
+    throw UnimplementedError('onMessageDisplay is not implemented');
+  }
 }

@@ -15,7 +15,16 @@
 NSString *const kFLTFirebaseInAppMessagingChannelName =
     @"plugins.flutter.io/firebase_in_app_messaging";
 
+NSString *const kFLTFirebaseInAppMessagingEventChannelName =
+    @"plugins.flutter.io/firebase_in_app_messaging/events";
+
+@interface FirebaseInAppMessagingPlugin () <FIRInAppMessagingDisplay, FlutterStreamHandler>
+@property(nonatomic, copy) FlutterEventSink eventSink;
+@property(nonatomic, strong) NSMutableArray<FIRInAppMessagingDisplayMessage *> *deferredMessages;
+@end
+
 @implementation FirebaseInAppMessagingPlugin
+
 + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar> *)registrar {
   FlutterMethodChannel *channel =
       [FlutterMethodChannel methodChannelWithName:kFLTFirebaseInAppMessagingChannelName
@@ -23,6 +32,21 @@ NSString *const kFLTFirebaseInAppMessagingChannelName =
   FirebaseInAppMessagingPlugin *instance = [[FirebaseInAppMessagingPlugin alloc] init];
   [[FLTFirebasePluginRegistry sharedInstance] registerFirebasePlugin:instance];
   [registrar addMethodCallDelegate:instance channel:channel];
+
+  // Register the EventChannel for in-app message display events
+  FlutterEventChannel *eventChannel =
+      [FlutterEventChannel eventChannelWithName:kFLTFirebaseInAppMessagingEventChannelName
+                                binaryMessenger:[registrar messenger]];
+  [eventChannel setStreamHandler:instance];
+}
+
+- (instancetype)init {
+  self = [super init];
+  if (self) {
+    _deferredMessages = [NSMutableArray array];
+    [FIRInAppMessaging inAppMessaging].messageDisplayComponent = self;
+  }
+  return self;
 }
 
 - (void)handleMethodCall:(FlutterMethodCall *)call result:(FlutterResult)result {
@@ -45,6 +69,82 @@ NSString *const kFLTFirebaseInAppMessagingChannelName =
   } else {
     result(FlutterMethodNotImplemented);
   }
+}
+
+#pragma mark - FlutterStreamHandler
+
+- (FlutterError *)onListenWithArguments:(id)arguments eventSink:(FlutterEventSink)events {
+  self.eventSink = events;  
+  // Process any deferred messages
+  if (self.deferredMessages.count > 0) {
+    FIRInAppMessagingDisplayMessage *message = self.deferredMessages.firstObject;
+    [self displayMessage:message displayDelegate:nil];
+    [self.deferredMessages removeObjectAtIndex:0];
+  }
+  
+  return nil;
+}
+
+- (FlutterError *)onCancelWithArguments:(id)arguments {
+  self.eventSink = nil;
+  return nil;
+}
+
+#pragma mark - FIRInAppMessagingDisplay
+
+- (void)displayMessage:(FIRInAppMessagingDisplayMessage *)message
+       displayDelegate:(id<FIRInAppMessagingDisplayDelegate>)displayDelegate {
+  if (self.eventSink == nil) {
+    [self.deferredMessages addObject:message];
+    return;
+  }
+  
+  NSString *title = nil;
+  NSString *body = nil;
+  NSString *imageUrl = nil;
+  NSDictionary *data = @{};
+  // Modal
+  if ([message isKindOfClass:[FIRInAppMessagingModalDisplay class]]) {
+    FIRInAppMessagingModalDisplay *modal = (FIRInAppMessagingModalDisplay *)message;
+    title = modal.title;
+    body = modal.bodyText;
+    if(modal.imageData != nil){
+      imageUrl = modal.imageData.imageURL;
+    }
+    data = modal.appData ?: @{};
+  } else if ([message isKindOfClass:[FIRInAppMessagingBannerDisplay class]]) {
+    FIRInAppMessagingBannerDisplay *banner = (FIRInAppMessagingBannerDisplay *)message;
+    title = banner.title;
+    body = banner.bodyText;
+    if(banner.imageData != nil){
+      imageUrl = banner.imageData.imageURL;
+    }
+    data = banner.appData ?: @{};
+  } else if ([message isKindOfClass:[FIRInAppMessagingImageOnlyDisplay class]]) {
+    FIRInAppMessagingImageOnlyDisplay *img = (FIRInAppMessagingImageOnlyDisplay *)message;
+    if(img.imageData != nil){
+      imageUrl = img.imageData.imageURL;
+    }
+    body = @"";
+    data = img.appData ?: @{};
+  } else if ([message isKindOfClass:[FIRInAppMessagingCardDisplay class]]) {
+    FIRInAppMessagingCardDisplay *card = (FIRInAppMessagingCardDisplay *)message;
+    title = card.title;
+    body = card.body;
+    data = card.appData ?: @{};
+  }
+  NSString *campaignId = message.campaignInfo.messageID ?: @"";
+  NSMutableDictionary *event = [NSMutableDictionary dictionary];
+  event[@"type"] = @"displayMessage";
+  event[@"message"] = @{
+    @"campaignId": campaignId,
+    @"title": title ?: [NSNull null],
+    @"body": body ?: [NSNull null],
+    @"imageUrl": imageUrl ?: [NSNull null],
+    @"data": data ?: @{},
+    @"messageType": NSStringFromClass([message class])
+  };
+  self.eventSink(event);
 }
 
 #pragma mark - FLTFirebasePlugin

@@ -4,6 +4,7 @@
 // found in the LICENSE file.
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -36,12 +37,66 @@ class MyApp extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: <Widget>[
+                  InAppMessageEventDisplay(),
                   AnalyticsEventExample(),
                   ProgrammaticTriggersExample(),
                 ],
               ),
             );
           },
+        ),
+      ),
+    );
+  }
+}
+
+/// Widget that listens to in-app message display events and shows the latest event.
+class InAppMessageEventDisplay extends StatefulWidget {
+  @override
+  State<InAppMessageEventDisplay> createState() =>
+      _InAppMessageEventDisplayState();
+}
+
+class _InAppMessageEventDisplayState extends State<InAppMessageEventDisplay> {
+  Map<String, dynamic>? _latestEvent;
+  StreamSubscription? _subscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscription = MyApp.fiam.onMessageDisplay.listen((event) {
+      setState(() {
+        _latestEvent = event;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: Colors.yellow[50],
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            const Text(
+              'Latest In-App Message Event',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _latestEvent != null
+                  ? const JsonEncoder.withIndent('  ').convert(_latestEvent)
+                  : 'No event received yet.',
+              style: const TextStyle(fontFamily: 'monospace'),
+            ),
+          ],
         ),
       ),
     );

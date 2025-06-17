@@ -73,4 +73,17 @@ class MethodChannelFirebaseInAppMessaging
       convertPlatformException(e, s);
     }
   }
+
+  @override
+  Stream<Map<String, dynamic>> get onMessageDisplay {
+    try {
+      const EventChannel _eventChannel =
+          EventChannel('plugins.flutter.io/firebase_in_app_messaging/events');
+      return _eventChannel
+          .receiveBroadcastStream()
+          .map((event) => Map<String, dynamic>.from(event));
+    } catch (e, s) {
+      convertPlatformException(e, s);
+    }
+  }
 }
