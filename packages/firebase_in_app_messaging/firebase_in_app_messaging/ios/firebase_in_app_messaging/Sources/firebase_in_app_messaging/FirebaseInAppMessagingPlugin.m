@@ -44,7 +44,9 @@ NSString *const kFLTFirebaseInAppMessagingEventChannelName =
   self = [super init];
   if (self) {
     _deferredMessages = [NSMutableArray array];
-    [FIRInAppMessaging inAppMessaging].messageDisplayComponent = self;
+    if ([self isCustomDisplayComponentEnabled]) {
+      [FIRInAppMessaging inAppMessaging].messageDisplayComponent = self;
+    }
   }
   return self;
 }
@@ -78,7 +80,6 @@ NSString *const kFLTFirebaseInAppMessagingEventChannelName =
   // Process any deferred messages
   if (self.deferredMessages.count > 0) {
     FIRInAppMessagingDisplayMessage *message = self.deferredMessages.firstObject;
-    [self displayMessage:message displayDelegate:nil];
     [self.deferredMessages removeObjectAtIndex:0];
   }
   
@@ -145,6 +146,14 @@ NSString *const kFLTFirebaseInAppMessagingEventChannelName =
     @"messageType": NSStringFromClass([message class])
   };
   self.eventSink(event);
+}
+
+- (BOOL)isCustomDisplayComponentEnabled {
+    id value = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CUSTOM_DISPLAY_COMPONENT_ENABLED"];
+    if (value && [value isKindOfClass:[NSNumber class]]) {
+        return [value boolValue];
+    }
+    return NO; // Default value
 }
 
 #pragma mark - FLTFirebasePlugin

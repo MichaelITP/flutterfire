@@ -21,6 +21,9 @@ import java.util.Map;
 import java.util.Objects;
 import android.app.Activity;
 import android.app.Application;
+import android.content.Context;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 
 /** FirebaseInAppMessagingPlugin */
@@ -86,7 +89,9 @@ public class FirebaseInAppMessagingPlugin
   @Override
   public void onActivityResumed(Activity activity) {
     currentActivity = activity;
-    FirebaseInAppMessaging.getInstance().setMessageDisplayComponent(displayComponent);
+    if(isCustomDisplayComponentEnabled(activity)) {
+      FirebaseInAppMessaging.getInstance().setMessageDisplayComponent(displayComponent);
+    }
   }
 
   @Override
@@ -165,5 +170,18 @@ public class FirebaseInAppMessagingPlugin
         });
 
     return taskCompletionSource.getTask();
+  }
+
+  public static boolean isCustomDisplayComponentEnabled(Context context) {
+    try {
+      ApplicationInfo appInfo = context.getPackageManager()
+        .getApplicationInfo(context.getPackageName(), PackageManager.GET_META_DATA);
+      if (appInfo.metaData != null) {
+        return appInfo.metaData.getBoolean("CUSTOM_DISPLAY_COMPONENT_ENABLED", false);
+      }
+    } catch (Exception e) {
+      // Optionally log the error
+    }
+    return false; // Default value if not set or error occurs
   }
 }

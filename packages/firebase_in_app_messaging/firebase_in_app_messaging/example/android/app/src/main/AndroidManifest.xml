@@ -3,6 +3,9 @@
         android:label="tests"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <meta-data
+          android:name="CUSTOM_DISPLAY_COMPONENT_ENABLED"
+          android:value="true" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
