@@ -80,6 +80,8 @@ NSString *const kFLTFirebaseInAppMessagingEventChannelName =
   // Process any deferred messages
   if (self.deferredMessages.count > 0) {
     FIRInAppMessagingDisplayMessage *message = self.deferredMessages.firstObject;
+    id<FIRInAppMessagingDisplayDelegate> delegate = self; // Use self as delegate for now
+    [self displayMessage:message displayDelegate:delegate];
     [self.deferredMessages removeObjectAtIndex:0];
   }
   
@@ -93,8 +95,7 @@ NSString *const kFLTFirebaseInAppMessagingEventChannelName =
 
 #pragma mark - FIRInAppMessagingDisplay
 
-- (void)displayMessage:(FIRInAppMessagingDisplayMessage *)message
-       displayDelegate:(id<FIRInAppMessagingDisplayDelegate>)displayDelegate {
+- (void)displayMessage:(FIRInAppMessagingDisplayMessage *)message displayDelegate:(id<FIRInAppMessagingDisplayDelegate>)displayDelegate {
   if (self.eventSink == nil) {
     [self.deferredMessages addObject:message];
     return;
@@ -146,6 +147,10 @@ NSString *const kFLTFirebaseInAppMessagingEventChannelName =
     @"messageType": NSStringFromClass([message class])
   };
   self.eventSink(event);
+  // Notify the delegate that the message was dismissed (required by the SDK)
+  if ([displayDelegate respondsToSelector:@selector(messageDismissed:dismissType:)]) {
+    [displayDelegate messageDismissed:message dismissType:FIRInAppMessagingDismissUnspecified];
+  }
 }
 
 - (BOOL)isCustomDisplayComponentEnabled {
